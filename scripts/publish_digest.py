@@ -8,9 +8,11 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEDULE_PATH = ROOT / "schedule.json"
+COVERS_PATH = ROOT / "anilist-covers.json"
 FEED_PATH = ROOT / "docs" / "anime-schedule.xml"
 CENTRAL = ZoneInfo("America/Chicago")
 PAGES_URL = "https://jschamber-png.github.io/Personalized.anime.watchlist/"
+ANILIST_CDN_PREFIX = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/"
 
 
 def parse_airings(schedule: dict) -> list[tuple[dict, datetime]]:
@@ -69,6 +71,7 @@ def current_guid(feed_path: Path) -> str | None:
 def publish_digest(
     schedule: dict,
     feed_path: Path,
+    cover_urls: dict[str, str],
     now: datetime | None = None,
 ) -> bool:
     now = now or datetime.now(timezone.utc)
@@ -104,10 +107,16 @@ def publish_digest(
     )
     lines = ["This week's anime airtimes (Central Time):", ""]
     for airing, local_time in airings:
+        cover_url = cover_urls.get(airing["title"])
+        if not cover_url or not cover_url.startswith(ANILIST_CDN_PREFIX):
+            raise ValueError(
+                f"Missing official AniList cover URL for {airing['title']!r}"
+            )
         lines.append(
             f"{local_time.strftime('%A, %b')} {local_time.day} at "
             f"{local_time.strftime('%I:%M %p %Z').lstrip('0')}: {airing['title']}"
         )
+        lines.append(f"Cover image: {cover_url}")
         lines.append(f"Schedule source: {airing['source_url']}")
         lines.append("")
 
@@ -120,7 +129,8 @@ def publish_digest(
 
 def main() -> None:
     schedule = json.loads(SCHEDULE_PATH.read_text(encoding="utf-8"))
-    changed = publish_digest(schedule, FEED_PATH)
+    cover_urls = json.loads(COVERS_PATH.read_text(encoding="utf-8"))
+    changed = publish_digest(schedule, FEED_PATH, cover_urls)
     print("Feed changed" if changed else "No feed change is due")
 
 

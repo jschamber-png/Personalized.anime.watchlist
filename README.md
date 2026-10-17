@@ -2,7 +2,8 @@
 
 This repository publishes one RSS digest for the week's anime airtimes. The
 publisher adds the digest 24 hours before the first listed episode. IFTTT can
-then post that new feed item to Discord.
+then post that new feed item to Discord, including the AniList cover image URL
+for each title.
 
 ## Setup
 
@@ -36,6 +37,23 @@ The schedule uses `America/Chicago` and records each airing with its UTC
 offset. The generated feed is `docs/anime-schedule.xml`. The schedule refresh
 does not invent times when it cannot find a reliable source; review its pull
 request before merging.
+
+Each digest entry includes its title, America/Chicago airing time, direct
+schedule source, and direct cover image URL from AniList's CDN. The mappings
+in `anilist-covers.json` are based on each title's official AniList anime entry.
+When adding a title to `watchlist.json`, add its AniList cover URL to that file
+using the exact same title.
+
+The publisher still emits one RSS item per week, so the weekly digest remains
+one IFTTT trigger and one Discord message. For Discord to receive the cover
+URLs, the IFTTT Discord action's message must include the RSS item's
+description/content, not only its title or feed link. Discord may show image
+previews for the direct URLs when link embeds are enabled, but whether it
+renders every image depends on the IFTTT action and Discord's embed handling;
+the feed itself provides each URL and does not create a separate Discord
+embed. The RSS trigger URL does not change. If the current applet message
+doesn't include the item description, update its message template to include
+that ingredient.
 
 To test locally, run:
 

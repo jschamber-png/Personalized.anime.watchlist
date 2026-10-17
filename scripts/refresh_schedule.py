@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -30,7 +31,9 @@ def response_text(response: dict) -> str:
     raise ValueError("OpenAI returned no structured text output")
 
 
-def validate_schedule(schedule: dict, titles: list[str], week_start: date) -> None:
+def validate_schedule(
+    schedule: dict, titles: list[str], week_start: date
+) -> list[dict]:
     if schedule.get("week_start") != week_start.isoformat():
         raise ValueError("OpenAI returned the wrong week_start")
 
@@ -41,20 +44,49 @@ def validate_schedule(schedule: dict, titles: list[str], week_start: date) -> No
         raise ValueError("OpenAI returned an invalid airings list")
 
     week_end = week_start + timedelta(days=6)
-    for airing in schedule["airings"]:
-        if airing.get("title") not in titles:
-            raise ValueError(f"Unexpected show title: {airing.get('title')!r}")
+    valid_airings = []
+    for index, airing in enumerate(schedule["airings"], start=1):
+        try:
+            if not isinstance(airing, dict):
+                raise ValueError("airing must be an object")
+            if airing.get("title") not in titles:
+                raise ValueError(f"Unexpected show title: {airing.get('title')!r}")
 
-        airtime = datetime.fromisoformat(airing["airtime"])
-        if airtime.utcoffset() is None:
-            raise ValueError("Every airtime must include a UTC offset")
-        local_date = airtime.astimezone(TIMEZONE).date()
-        if not week_start <= local_date <= week_end:
-            raise ValueError(f"Airtime is outside the requested week: {airing['airtime']}")
+            airtime = datetime.fromisoformat(airing["airtime"])
+            if airtime.utcoffset() is None:
+                raise ValueError("Every airtime must include a UTC offset")
+            local_date = airtime.astimezone(TIMEZONE).date()
+            if not week_start <= local_date <= week_end:
+                raise ValueError(
+                    f"Airtime is outside the requested week: {airing['airtime']}"
+                )
 
-        parsed_url = urlparse(airing["source_url"])
-        if parsed_url.scheme != "https" or not parsed_url.netloc:
-            raise ValueError("Every airing must include an HTTPS source URL")
+            source_url = airing["source_url"]
+            if not isinstance(source_url, str):
+                raise ValueError("Every airing must include an HTTPS source URL")
+            parsed_url = urlparse(source_url)
+            if parsed_url.scheme != "https" or not parsed_url.netloc:
+                raise ValueError("Every airing must include an HTTPS source URL")
+        except (KeyError, TypeError, ValueError) as error:
+            print(f"Omitting invalid airing {index}: {error}", file=sys.stderr)
+            continue
+        valid_airings.append(airing)
+
+    return valid_airings
+
+
+def build_prompt(titles: list[str], week_start: date) -> str:
+    week_end = week_start + timedelta(days=6)
+    return (
+        f"Find new-episode streaming airtimes from {week_start.isoformat()} "
+        f"through {week_end.isoformat()} for these exact shows: "
+        f"{json.dumps(titles)}. Search official broadcaster or streaming-service "
+        "pages first. Include only episodes with a verifiable date and time; do "
+        "not infer or invent times. Convert every time to America/Chicago and "
+        "return it as ISO 8601 with an explicit UTC offset. Include the direct "
+        "HTTPS URL that verifies each airing. If an airing cannot be verified, "
+        "omit it. Return the requested week_start exactly."
+    )
 
 
 def main() -> None:
@@ -65,7 +97,6 @@ def main() -> None:
     titles = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
     today = datetime.now(TIMEZONE).date()
     week_start = next_week_start(today)
-    week_end = week_start + timedelta(days=6)
 
     schema = {
         "type": "object",
@@ -90,16 +121,7 @@ def main() -> None:
         "required": ["week_start", "timezone", "airings"],
     }
 
-    prompt = (
-        f"Find new-episode streaming airtimes from {week_start.isoformat()} "
-        f"through {week_end.isoformat()} for these exact shows: "
-        f"{json.dumps(titles)}. Search official broadcaster or streaming-service "
-        "pages first. Include only episodes with a verifiable date and time; do "
-        "not infer or invent times. Convert every time to America/Chicago and "
-        "return it as ISO 8601 with an explicit UTC offset. Include the direct "
-        "HTTPS URL that verifies each airing. If an airing cannot be verified, "
-        "omit it. Return the requested week_start exactly."
-    )
+    prompt = build_prompt(titles, week_start)
 
     request_body = {
         "model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"),
@@ -132,8 +154,7 @@ def main() -> None:
         raise SystemExit(f"OpenAI API returned HTTP {error.code}: {details}") from error
 
     schedule = json.loads(response_text(result))
-    schedule["timezone"] = "America/Chicago"
-    validate_schedule(schedule, titles, week_start)
+    schedule["airings"] = validate_schedule(schedule, titles, week_start)
 
     destination = ROOT / "schedule.json"
     destination.write_text(

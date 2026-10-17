@@ -36,7 +36,9 @@ reached. GitHub Actions and IFTTT polling can add delivery delay.
 The schedule uses `America/Chicago` and records each airing with its UTC
 offset. The generated feed is `docs/anime-schedule.xml`. The schedule refresh
 does not invent times when it cannot find a reliable source; review its pull
-request before merging.
+request before merging. Airings with missing UTC offsets, invalid source URLs,
+or dates outside the requested week in `America/Chicago` are omitted and
+reported in the refresh job log rather than assigned guessed replacement dates.
 
 Each digest entry includes its title, America/Chicago airing time, direct
 schedule source, and direct cover image URL from AniList's CDN. The mappings

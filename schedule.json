@@ -1,0 +1,31 @@
+{
+  "week_start": "2026-10-19",
+  "timezone": "America/Chicago",
+  "airings": [
+    {
+      "title": "A Returner's Magic Should Be Special (Season 2)",
+      "airtime": "2026-10-21T09:45:00-05:00",
+      "source_url": "https://www.crunchyroll.com"
+    },
+    {
+      "title": "The Exiled Heavy Knight Knows How to Game the System",
+      "airtime": "2026-10-22T11:00:00-05:00",
+      "source_url": "https://www.crunchyroll.com"
+    },
+    {
+      "title": "Overgeared",
+      "airtime": "2026-10-23T09:30:00-05:00",
+      "source_url": "https://www.crunchyroll.com"
+    },
+    {
+      "title": "Tougen Anki (Season 1)",
+      "airtime": "2026-10-23T12:00:00-05:00",
+      "source_url": "https://www.crunchyroll.com"
+    },
+    {
+      "title": "Black Clover (Season 2)",
+      "airtime": "2026-10-24T10:00:00-05:00",
+      "source_url": "https://www.crunchyroll.com"
+    }
+  ]
+}

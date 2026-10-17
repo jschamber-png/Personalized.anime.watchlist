@@ -1,0 +1,37 @@
+name: Refresh anime schedule
+
+on:
+  schedule:
+    - cron: "0 15 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Ask OpenAI to research next week's airtimes
+        run: python scripts/refresh_schedule.py
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4.1-mini
+      - name: Open schedule review pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/weekly-anime-schedule
+          delete-branch: true
+          add-paths: schedule.json
+          commit-message: Refresh weekly anime schedule proposal
+          title: Refresh weekly anime schedule
+          body: |
+            OpenAI prepared this schedule using web search. Review every airtime
+            and source URL before merging. The feed publisher uses the merged
+            schedule to post one digest 24 hours before its first airing.

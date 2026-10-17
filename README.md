@@ -14,7 +14,8 @@ then post that new feed item to Discord.
 4. Add an Actions repository secret named `OPENAI_API_KEY`. OpenAI API usage
 	is billed separately from a ChatGPT subscription.
 5. Run **Actions > Publish anime digest > Run workflow** once to publish the
-	initial empty feed and verify the Pages deployment.
+	initial empty feed and verify the Pages deployment. Manual runs deploy the
+	existing feed even when no digest is due; they do not publish a digest early.
 6. Set IFTTT's RSS trigger URL to
 	`https://jschamber-png.github.io/Personalized.anime.watchlist/anime-schedule.xml`.
 
